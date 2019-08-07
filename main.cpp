@@ -3,11 +3,11 @@
 #include <string>
 #include <queue>
 #include <time.h>
-
+#include <ctime>
 
 class Writer {
 public:
-	virtual void update(std::string &s) = 0;
+	virtual void update(std::vector<std::string> &vec, std::time_t firstCommTime) = 0;
 };
 
 
@@ -17,18 +17,16 @@ public:
 	void Add(std::string &str) {
 		bulk.emplace(str);
 	}
-	std::string Retrive() {
-		std::string res = "";
+	bool isEmpty() const {
+		return bulk.empty();
+	}
+	void Retrive(std::vector<std::string> &vec) {
 		if (!bulk.empty()) {
-			res = "bulk: ";
 			while (!bulk.empty()) {
-				res += bulk.front();
+				vec.push_back(bulk.front());
 				bulk.pop();
-				if (!bulk.empty())
-					res += ", ";
 			}
 		}
-		return res;
 	}
 };
 
@@ -37,15 +35,16 @@ class BulkMechanics {
 	size_t N, n_cnt, n_brackets;
 	Bulk bulk;
 	std::vector<Writer*> subs;
+	std::time_t commTime;
 public:
 	BulkMechanics(size_t _N, Bulk &_bulk) : N(_N), bulk(_bulk), n_cnt(0), n_brackets(0) { }
 	void Parse(std::string &str) {
 		if (str == "{") {
-			if(n_brackets == 0)
+			if (n_brackets == 0)
 				Flash();
 			++n_brackets;
 		}
-		else 
+		else
 			if (str == "}") {
 				if (n_brackets > 0) {
 					if (n_brackets == 1) {
@@ -55,6 +54,8 @@ public:
 				}
 			}
 			else {
+				if(bulk.isEmpty())
+					commTime = std::time(nullptr);
 				bulk.Add(str);
 				if (n_brackets == 0) {
 					++n_cnt;
@@ -65,10 +66,11 @@ public:
 			}
 	}
 	void Flash() {
-		std::string str = bulk.Retrive();
-		if (!str.empty()) {
+		std::vector<std::string> vec;
+		bulk.Retrive(vec);
+		if (vec.size() > 0) {
 			for (auto s : subs) {
-				s->update(str);
+				s->update(vec, commTime);
 			}
 		}
 		n_cnt = 0;
@@ -84,8 +86,15 @@ public:
 	screen_writer(BulkMechanics& mech) {
 		mech.Subscribe(this);
 	}
-	void update(std::string &s) override {
-		std::cout << s << std::endl;
+	void update(std::vector<std::string> &vec, std::time_t firstCommTime) override {
+		std::string str_screen = "bulk: ";
+		size_t cnt = 0;
+		for each(auto s in vec)	{
+			str_screen += s;
+			if(++cnt < vec.size())
+				str_screen += ", ";
+		}
+		std::cout << str_screen << std::endl;
 	}
 };
 
@@ -94,13 +103,19 @@ class file_writer : public Writer {
 public:
 	file_writer(BulkMechanics& mech) {
 		mech.Subscribe(this);
-		logfile.open("bulk" + std::to_string(time(NULL)) + ".log");
 	}
 	~file_writer() {
-		logfile.close();
+		if(logfile.is_open())
+			logfile.close();
 	}
-	void update(std::string &s) override {
-		logfile << s << std::endl;
+	void update(std::vector<std::string> &vec, std::time_t firstCommTime) override {
+		logfile.open("bulk" + std::to_string(firstCommTime) + ".log");
+		std::string str_file;
+		for each (auto s in vec) {
+			str_file += s + "\n";
+		}
+		logfile << str_file << std::endl;
+		logfile.close();
 	}
 };
 
@@ -108,13 +123,13 @@ public:
 int main(int argc, char* argv[])
 {
 	if (argc < 2) {
-		std::cout << "You must provide the N argument\n" << std::endl; 
+		std::cout << "You must provide the N argument\n" << std::endl;
 		return 1;
 	}
 	size_t N = atoi(argv[1]);
 	Bulk bulk;
 	BulkMechanics mech{ N, bulk };
-	
+
 	screen_writer scr_wr(mech);
 	file_writer file_wr(mech);
 
