@@ -69,7 +69,7 @@ public:
 		std::vector<std::string> vec;
 		bulk.Retrive(vec);
 		if (vec.size() > 0) {
-			for (auto s : subs) {
+			for (auto& s : subs) {
 				s->update(vec, commTime);
 			}
 		}
@@ -89,7 +89,7 @@ public:
 	void update(std::vector<std::string> &vec, std::time_t firstCommTime) override {
 		std::string str_screen = "bulk: ";
 		size_t cnt = 0;
-		for each(auto s in vec)	{
+		for(const auto& s : vec)	{
 			str_screen += s;
 			if(++cnt < vec.size())
 				str_screen += ", ";
@@ -111,7 +111,7 @@ public:
 	void update(std::vector<std::string> &vec, std::time_t firstCommTime) override {
 		logfile.open("bulk" + std::to_string(firstCommTime) + ".log");
 		std::string str_file;
-		for each (auto s in vec) {
+		for(const auto& s : vec) {
 			str_file += s + "\n";
 		}
 		logfile << str_file << std::endl;
